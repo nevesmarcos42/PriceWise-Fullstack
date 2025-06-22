@@ -1,6 +1,7 @@
 package br.com.marcos.pricewiseapi.controller;
 
 import br.com.marcos.pricewiseapi.dto.CreateProductDTO;
+import br.com.marcos.pricewiseapi.dto.DiscountedProductDTO;
 import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
 import br.com.marcos.pricewiseapi.service.ProductService;
 import jakarta.validation.Valid;
@@ -35,6 +36,14 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> findById(@PathVariable Long id) {
         ProductResponseDTO dto = productService.findById(id);
+        return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping("/{id}/discounted")
+    public ResponseEntity<DiscountedProductDTO> getDiscountedProduct(
+            @PathVariable Long id,
+            @RequestParam String coupon) {
+        DiscountedProductDTO dto = productService.getDiscountedProduct(id, coupon);
         return ResponseEntity.ok(dto);
     }
 }
