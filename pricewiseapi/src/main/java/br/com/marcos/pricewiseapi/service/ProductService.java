@@ -1,10 +1,14 @@
 package br.com.marcos.pricewiseapi.service;
 
 import br.com.marcos.pricewiseapi.dto.CreateProductDTO;
+import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
 import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.repository.ProductRepository;
 import jakarta.persistence.EntityExistsException;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
@@ -44,5 +48,16 @@ public class ProductService {
                 .replaceAll("\\s+", " ")
                 .trim()
                 .toLowerCase();
+    }
+
+    public Page<ProductResponseDTO> findAll(Pageable pageable) {
+        return repository.findAll(pageable)
+                .map(product -> ProductResponseDTO.builder()
+                        .id(product.getId())
+                        .name(product.getName())
+                        .description(product.getDescription())
+                        .stock(product.getStock())
+                        .price(product.getPrice())
+                        .build());
     }
 }
