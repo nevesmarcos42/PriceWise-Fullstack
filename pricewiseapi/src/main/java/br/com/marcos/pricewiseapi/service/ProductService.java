@@ -2,6 +2,7 @@ package br.com.marcos.pricewiseapi.service;
 
 import br.com.marcos.pricewiseapi.dto.CreateProductDTO;
 import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
+import br.com.marcos.pricewiseapi.exeception.ProductNotFoundException;
 import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.repository.ProductRepository;
 import jakarta.persistence.EntityExistsException;
@@ -59,5 +60,18 @@ public class ProductService {
                         .stock(product.getStock())
                         .price(product.getPrice())
                         .build());
+    }
+
+    public ProductResponseDTO findById(Long id) {
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+
+        return ProductResponseDTO.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .stock(product.getStock())
+                .price(product.getPrice())
+                .build();
     }
 }
