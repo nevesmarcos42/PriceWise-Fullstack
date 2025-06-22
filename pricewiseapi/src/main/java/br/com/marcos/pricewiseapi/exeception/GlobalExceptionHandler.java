@@ -18,4 +18,22 @@ public class GlobalExceptionHandler {
                 "error", "Not Found",
                 "message", ex.getMessage()));
     }
+
+    @ExceptionHandler(CouponNotFoundException.class)
+    public ResponseEntity<?> handleCouponNotFound(CouponNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 404,
+                "error", "Cupom não encontrado",
+                "message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(CouponExpiredException.class)
+    public ResponseEntity<?> handleCouponExpired(CouponExpiredException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 400,
+                "error", "Cupom expirado",
+                "message", ex.getMessage()));
+    }
 }
