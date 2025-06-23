@@ -3,9 +3,13 @@ package br.com.marcos.pricewiseapi.controller;
 import br.com.marcos.pricewiseapi.dto.CreateProductDTO;
 import br.com.marcos.pricewiseapi.dto.DiscountedProductDTO;
 import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
+import br.com.marcos.pricewiseapi.mapper.ProductMapper;
+//import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
@@ -19,6 +23,8 @@ import java.net.URI;
 public class ProductController {
 
     private final ProductService productService;
+
+    private final ProductMapper mapper;
 
     @PostMapping
     public ResponseEntity<Void> create(@Valid @RequestBody CreateProductDTO dto) {
@@ -45,5 +51,17 @@ public class ProductController {
             @RequestParam String coupon) {
         DiscountedProductDTO dto = productService.getDiscountedProduct(id, coupon);
         return ResponseEntity.ok(dto);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void softDelete(@PathVariable Long id) {
+        productService.softDelete(id);
+    }
+
+    @PostMapping("/{id}/restore")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restore(@PathVariable Long id) {
+        productService.restore(id);
     }
 }

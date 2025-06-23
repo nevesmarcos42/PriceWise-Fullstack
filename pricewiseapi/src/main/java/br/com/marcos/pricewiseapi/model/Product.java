@@ -46,12 +46,14 @@ public class Product {
     private BigDecimal price;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
 }

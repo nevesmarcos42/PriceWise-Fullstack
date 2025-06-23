@@ -6,6 +6,8 @@ import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
 import br.com.marcos.pricewiseapi.exeception.CouponExpiredException;
 import br.com.marcos.pricewiseapi.exeception.CouponNotFoundException;
 import br.com.marcos.pricewiseapi.exeception.ProductNotFoundException;
+import br.com.marcos.pricewiseapi.exeception.NotFoundException;
+import br.com.marcos.pricewiseapi.exeception.BusinessException;
 import br.com.marcos.pricewiseapi.model.Coupon;
 import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.repository.CouponRepository;
@@ -60,7 +62,7 @@ public class ProductService {
     }
 
     public Page<ProductResponseDTO> findAll(Pageable pageable) {
-        return repository.findAll(pageable)
+        return repository.findAllByDeletedAtIsNull(pageable)
                 .map(product -> ProductResponseDTO.builder()
                         .id(product.getId())
                         .name(product.getName())
@@ -108,5 +110,30 @@ public class ProductService {
                 .discountedPrice(finalPrice)
                 .appliedCoupon(coupon.getCode())
                 .build();
+    }
+
+    public void softDelete(Long id) {
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+
+        if (product.getDeletedAt() != null) {
+            throw new BusinessException("Produto já foi deletado");
+        }
+
+        product.setDeletedAt(OffsetDateTime.now());
+
+        repository.save(product); // ← ESSA LINHA FAZ TODA A DIFERENÇA!
+    }
+
+    public void restore(Long id) {
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+
+        if (product.getDeletedAt() == null) {
+            throw new BusinessException("Produto já está ativo");
+        }
+
+        product.setDeletedAt(null);
+        repository.save(product);
     }
 }
