@@ -6,6 +6,8 @@ import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
 import br.com.marcos.pricewiseapi.exeception.CouponExpiredException;
 import br.com.marcos.pricewiseapi.exeception.CouponNotFoundException;
 import br.com.marcos.pricewiseapi.exeception.ProductNotFoundException;
+import br.com.marcos.pricewiseapi.exeception.NotFoundException;
+import br.com.marcos.pricewiseapi.exeception.BusinessException;
 import br.com.marcos.pricewiseapi.model.Coupon;
 import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.repository.CouponRepository;
@@ -16,6 +18,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatchException;
+import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
@@ -28,6 +36,7 @@ public class ProductService {
 
     private final ProductRepository repository;
     private final CouponRepository couponRepository;
+    private final ObjectMapper objectMapper;
 
     public Long create(CreateProductDTO dto) {
         String normalizedName = normalize(dto.getName());
@@ -60,7 +69,18 @@ public class ProductService {
     }
 
     public Page<ProductResponseDTO> findAll(Pageable pageable) {
-        return repository.findAll(pageable)
+        return repository.findAllByDeletedAtIsNull(pageable)
+                .map(product -> ProductResponseDTO.builder()
+                        .id(product.getId())
+                        .name(product.getName())
+                        .description(product.getDescription())
+                        .stock(product.getStock())
+                        .price(product.getPrice())
+                        .build());
+    }
+
+    public Page<ProductResponseDTO> findAllDeleted(Pageable pageable) {
+        return repository.findAllByDeletedAtIsNotNull(pageable)
                 .map(product -> ProductResponseDTO.builder()
                         .id(product.getId())
                         .name(product.getName())
@@ -108,5 +128,52 @@ public class ProductService {
                 .discountedPrice(finalPrice)
                 .appliedCoupon(coupon.getCode())
                 .build();
+    }
+
+    public void softDelete(Long id) {
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+
+        if (product.getDeletedAt() != null) {
+            throw new BusinessException("Produto já foi deletado");
+        }
+
+        product.setDeletedAt(OffsetDateTime.now());
+
+        repository.save(product); // ← ESSA LINHA FAZ TODA A DIFERENÇA!
+    }
+
+    public void restore(Long id) {
+        Product product = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+
+        if (product.getDeletedAt() == null) {
+            throw new BusinessException("Produto já está ativo");
+        }
+
+        product.setDeletedAt(null);
+        repository.save(product);
+    }
+
+    public Product applyMergePatch(Long id, JsonMergePatch patch) {
+        try {
+            // Busca o produto existente
+            Product existing = repository.findById(id)
+                    .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+
+            // Converte o objeto atual para JsonNode
+            JsonNode original = objectMapper.valueToTree(existing);
+
+            // Aplica o patch no JSON
+            JsonNode patched = patch.apply(original);
+
+            // Converte de volta para Product
+            Product updated = objectMapper.treeToValue(patched, Product.class);
+            updated.setId(id); // garante que o ID não muda
+
+            return repository.save(updated);
+        } catch (JsonPatchException | JsonProcessingException e) {
+            throw new RuntimeException("Erro ao aplicar atualização parcial", e);
+        }
     }
 }
