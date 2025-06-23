@@ -3,6 +3,7 @@ package br.com.marcos.pricewiseapi.controller;
 import br.com.marcos.pricewiseapi.dto.CreateProductDTO;
 import br.com.marcos.pricewiseapi.dto.DiscountedProductDTO;
 import br.com.marcos.pricewiseapi.dto.ProductResponseDTO;
+import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.mapper.ProductMapper;
 //import br.com.marcos.pricewiseapi.model.Product;
 import br.com.marcos.pricewiseapi.service.ProductService;
@@ -12,6 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.github.fge.jsonpatch.JsonPatchException;
+import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -63,5 +68,17 @@ public class ProductController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void restore(@PathVariable Long id) {
         productService.restore(id);
+    }
+
+    @GetMapping("/deleted")
+    public Page<ProductResponseDTO> findAllDeleted(Pageable pageable) {
+        return productService.findAllDeleted(pageable);
+    }
+
+    @PatchMapping(value = "/{id}", consumes = "application/merge-patch+json")
+    public ProductResponseDTO patch(@PathVariable Long id, @RequestBody JsonMergePatch patch)
+            throws JsonPatchException {
+        Product patched = productService.applyMergePatch(id, patch);
+        return mapper.toResponseDTO(patched);
     }
 }

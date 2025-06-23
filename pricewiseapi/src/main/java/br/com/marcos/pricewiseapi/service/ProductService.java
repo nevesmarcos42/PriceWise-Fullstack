@@ -19,6 +19,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatchException;
+import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
+
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDate;
@@ -30,6 +36,7 @@ public class ProductService {
 
     private final ProductRepository repository;
     private final CouponRepository couponRepository;
+    private final ObjectMapper objectMapper;
 
     public Long create(CreateProductDTO dto) {
         String normalizedName = normalize(dto.getName());
@@ -63,6 +70,17 @@ public class ProductService {
 
     public Page<ProductResponseDTO> findAll(Pageable pageable) {
         return repository.findAllByDeletedAtIsNull(pageable)
+                .map(product -> ProductResponseDTO.builder()
+                        .id(product.getId())
+                        .name(product.getName())
+                        .description(product.getDescription())
+                        .stock(product.getStock())
+                        .price(product.getPrice())
+                        .build());
+    }
+
+    public Page<ProductResponseDTO> findAllDeleted(Pageable pageable) {
+        return repository.findAllByDeletedAtIsNotNull(pageable)
                 .map(product -> ProductResponseDTO.builder()
                         .id(product.getId())
                         .name(product.getName())
@@ -135,5 +153,27 @@ public class ProductService {
 
         product.setDeletedAt(null);
         repository.save(product);
+    }
+
+    public Product applyMergePatch(Long id, JsonMergePatch patch) {
+        try {
+            // Busca o produto existente
+            Product existing = repository.findById(id)
+                    .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+
+            // Converte o objeto atual para JsonNode
+            JsonNode original = objectMapper.valueToTree(existing);
+
+            // Aplica o patch no JSON
+            JsonNode patched = patch.apply(original);
+
+            // Converte de volta para Product
+            Product updated = objectMapper.treeToValue(patched, Product.class);
+            updated.setId(id); // garante que o ID não muda
+
+            return repository.save(updated);
+        } catch (JsonPatchException | JsonProcessingException e) {
+            throw new RuntimeException("Erro ao aplicar atualização parcial", e);
+        }
     }
 }
